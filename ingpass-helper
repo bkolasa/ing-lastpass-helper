@@ -8,6 +8,9 @@ import os.path
 
 config_path_template = '~/.ingpass-helper/config'
 
+class AmbigousAccountException(Exception):
+	pass
+
 def get_user_name():
 	config_path = os.path.expanduser(config_path_template)
 	parser = ConfigParser.RawConfigParser(allow_no_value=True)
@@ -30,16 +33,35 @@ def get_lastpass_vault():
 	return lastpass.Vault.open_remote(user_name,password)
 
 def print_row(account_id,account_url):
-	print account_id.rjust(8,' ') + '|' + account_url.rjust(30,' ')
+	print account_id.rjust(15,' ') + ' | ' + account_url.rjust(50,' ')
 
 def search(pattern):
 	vault = get_lastpass_vault()
-	matched_accounts = filter(lambda a: pattern in a.url, vault.accounts)
-	for a in matched_accounts:
-		print_row(a.id,a.url)
+	return filter(lambda a: pattern in a.url, vault.accounts)
 	
+def print_accounts(accounts):
+	print_row('id','url')
+	for a in accounts:
+		print_row(a.id,a.url)
+
+def show_filtered_password(pattern, positions):
+	accounts =  search(pattern)
+	if len(accounts) > 1:
+		raise AmbigousAccountException("Provided pattern does not identify account unambigously. Try to narrow it.")
+	account = accounts[0]
+	print ''.join(map(lambda i: account.password[int(i)-1], positions))
+
 def main():
-	search(sys.argv[2])
+	mode = sys.argv[1]
+	key_name = sys.argv[2]
+	if mode == "search":
+		accounts = search(key_name)
+		print_accounts(accounts)
+	elif mode == "get":
+		positions = sys.argv[3:]
+		show_filtered_password(key_name, positions)
+	else:
+		raise ValueError("Incorrect parameter name")
 
 main()
 
