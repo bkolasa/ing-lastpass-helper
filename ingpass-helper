@@ -3,7 +3,7 @@
 import getpass
 import sys
 import lastpass
-import ConfigParser
+import configparser
 import os.path
 
 config_path_template = '~/.ingpass-helper/config'
@@ -13,18 +13,18 @@ class AmbigousAccountException(Exception):
 
 def get_user_name():
 	config_path = os.path.expanduser(config_path_template)
-	parser = ConfigParser.RawConfigParser(allow_no_value=True)
+	parser = configparser.ConfigParser(allow_no_value=True)
 	if os.path.isfile(config_path):
 		parser.read(config_path)
 		return parser.get('base','user.name')
 	else:
-		user_name = raw_input('Enter LastPass user name (email): ')
+		user_name = input('Enter LastPass user name (email): ')
 		parser.add_section('base')
-		print parser.sections()
 		parser.set('base','user.name',user_name)
-		with open(config_path,'wb') as config_file:
+		with open(config_path,'w') as config_file:
+			print(f'Writing config file to {config_path}')
 			parser.write(config_file)
-		print 'User name was saved to ' + config_path
+		print('User name was saved to ' + config_path)
 		return user_name
 
 def get_lastpass_vault():
@@ -33,11 +33,11 @@ def get_lastpass_vault():
 	return lastpass.Vault.open_remote(user_name,password)
 
 def print_row(account_id,account_url):
-	print account_id.rjust(15,' ') + ' | ' + account_url.rjust(50,' ')
+	print(account_id.rjust(15,' ') + ' | ' + account_url.rjust(50,' '))
 
 def search(pattern):
 	vault = get_lastpass_vault()
-	return filter(lambda a: pattern in a.url, vault.accounts)
+	return [a for a in vault.accounts if str(pattern) in str(a.url)]
 	
 def print_accounts(accounts):
 	print_row('id','url')
@@ -49,7 +49,7 @@ def show_filtered_password(pattern, positions):
 	if len(accounts) > 1:
 		raise AmbigousAccountException("Provided pattern does not identify account unambigously. Try to narrow it.")
 	account = accounts[0]
-	print ''.join(map(lambda i: account.password[int(i)-1], positions))
+	print(''.join([str(account.password)[int(i)-1] for i in positions]))
 
 def main():
 	mode = sys.argv[1]
